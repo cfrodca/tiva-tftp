@@ -14,9 +14,9 @@ Initialization:
 
 	Where:
 
-	- char **buffer: is the file data provided by the application
-	- UINT32 *bufferSize: is the size of the data
-	- UINT16 block: is the segment of 512 Bytes of the file to transmit
+	- char **buffer: file data provided by the application
+	- UINT32 *bufferSize: size of the data
+	- UINT16 block: segment of 512 Bytes of the file to transmit
 
 - The server daemon must be created and destroyed from a file netHooks.c:
 
