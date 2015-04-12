@@ -16,7 +16,7 @@
 #define PORT_TFTP 69
 
 int dtask_tftp( SOCKET s, UINT32 unused );
-typedef int (*tTFTPRequest)(char *fileName, char **buffer, UINT32 *bufferSize, UINT16 block);
+typedef int (*tTFTPRequest)(char *fileName, char *buffer, UINT32 *bufferSize, UINT16 block);
 void tftpInit(tTFTPRequest pfnRequest);
 
 
