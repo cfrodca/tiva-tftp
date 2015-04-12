@@ -2,10 +2,7 @@
  @file tftp.c
  @date 06/04/2015 10:49:23
  @author Cristian
- @ingroup ModuloServidores
- @brief Servidor TFTP para los archivos de la SD.
- @details Recibe peticiones de lectura archivos de la SD. Implementa además
- un comando sencillo para listar los archivos de la SD.
+ @brief Servidor TFTP
  */
 
 #include <string.h>     // memcpy
