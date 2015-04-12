@@ -14,7 +14,7 @@ Initialization:
 
 	Where:
 
-	- char **buffer: file data provided by the application
+	- char *buffer: file data provided by the application
 	- UINT32 *bufferSize: size of the data
 	- UINT16 block: segment of 512 Bytes of the file to transmit
 
