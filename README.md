@@ -10,7 +10,7 @@ Initialization:
 
 - Call the function void tftpInit(tTFTPRequest pfnRequest) and pass the callback application:
 
-	int (*tTFTPRequest)(char *fileName, char **buffer, UINT32 *bufferSize, UINT16 block);
+	int (*tTFTPError)(char *fileName, char **buffer, UINT32 *bufferSize, UINT16 block);
 
 	Where:
 
