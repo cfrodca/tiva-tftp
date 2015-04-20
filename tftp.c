@@ -2,7 +2,7 @@
  @file tftp.c
  @date 06/04/2015 10:49:23
  @author Cristian
- @brief Servidor TFTP
+ @brief Simple TFTP Server
  */
 
 #include <string.h>     // memcpy
@@ -59,7 +59,7 @@ typedef struct _tftp {
 /* Application connection notification callback. */
 static tTFTPRequest g_pfnRequest;
 
-/* Funciones locales */
+/* Local functions */
 static int tftpSocketRestart(TFTP *);
 static int tftpReadPacket(TFTP *);
 static int tftpProcessPacket(TFTP *);
@@ -72,15 +72,14 @@ static int tftpReSync(TFTP *);
 static void tftpFlushPackets(TFTP *);
 
 /**
- @brief Tarea de gestión del servidor TFTP. Se llama cuando ocurre cualquier
- evento en el socket UDP.
+ @brief TFTP Server, Main task management.
  */
 int dtask_tftp(SOCKET s, UINT32 unused) {
 	TFTP *pTftp;
 	int rc; /* Return Code */
 	struct timeval timeout;
 
-	/* Si la función callback no ha sido asignada, abortamos */
+	/* If the callback function is null, abort */
 	if (g_pfnRequest == NULL)
 		goto ABORT;
 
@@ -96,13 +95,13 @@ int dtask_tftp(SOCKET s, UINT32 unused) {
 		goto ABORT;
 	}
 
-	/* Inicializamos la dirección y puerto local */
+	/* Initialize address and local port */
 	bzero(&pTftp->localaddr, sizeof(struct sockaddr_in));
 	pTftp->localaddr.sin_family = AF_INET;
 	pTftp->localaddr.sin_addr.s_addr = 0;
 	pTftp->localaddr.sin_port = htons(PORT_TFTP);
 
-	/* Guardamos una copia del socket */
+	/* Save a copy of the socket */
 	pTftp->Sock = s;
 
 	/* Set the socket IO timeout */
@@ -117,7 +116,7 @@ int dtask_tftp(SOCKET s, UINT32 unused) {
 			sizeof(timeout)) < 0)
 		goto ABORT;
 
-	/* Bucla principal */
+	/* Main loop */
 	for (;;) {
 		/* Try and get a reply packet */
 		rc = tftpReadPacket(pTftp);
@@ -155,7 +154,7 @@ int dtask_tftp(SOCKET s, UINT32 unused) {
 }
 
 /**
- @brief Restaura el puerto del socket TFTP
+ @brief Restart the server listening port
  */
 static int tftpSocketRestart(TFTP *pTftp) {
 	int rc; /* Return Code */
@@ -173,15 +172,13 @@ static int tftpSocketRestart(TFTP *pTftp) {
 }
 
 /**
- @brief Cambiamos el puerto del servidor para que
- coincida con el del cliente.
+ @brief Change the server listening port
  */
 static int tftpChangeListenPort(TFTP *pTftp) {
 	struct timeval timeout;
 	int rc; /* Return Code */
 
-	/* Para cambiar el puerto de origen, es necesario cerrar el socket
-	 y crera otro */
+	/* Close the socket */
 	if (pTftp->Sock != INVALID_SOCKET)
 		fdClose(pTftp->Sock);
 
@@ -192,17 +189,17 @@ static int tftpChangeListenPort(TFTP *pTftp) {
 		goto ABORT;
 	}
 
-	/* Asignamos el puerto del cliente */
+	/* Assign the same client port */
 	pTftp->localaddr.sin_port = pTftp->peeraddr.sin_port;
 
-	/* Asignamos un nuevo nombre local al socket */
+	/* Assign a new local name */
 	if (bind(pTftp->Sock, (struct sockaddr *) &pTftp->localaddr,
 			sizeof(pTftp->localaddr)) < 0) {
 		rc = TFTPERROR_SOCKET;
 		goto ABORT;
 	}
 
-	/* Volvemos a configurar los timeouts */
+	/* Assign new timeouts */
 	timeout.tv_sec = TFTP_SOCK_TIMEOUT;
 	timeout.tv_usec = 0;
 
@@ -223,8 +220,7 @@ static int tftpChangeListenPort(TFTP *pTftp) {
 }
 
 /**
- @brief Lee un dato del paquete del socket cliente.
- Sets bytes read to ZERO on a timeout
+ @brief Read packet from the client
  */
 static int tftpReadPacket(TFTP *pTftp) {
 	int rc = 0;
@@ -271,10 +267,10 @@ static int tftpReadPacket(TFTP *pTftp) {
 }
 
 /**
- @brief Procesa un paquete obtenido de tftpReadPacket()
- @retval  1 Operación con el cliente terminada
- @retval  0 Operación con el cliente en progreso
- @retval <0 Condición de error
+ @brief Process the packet read from tftpReadPacket()
+ @retval  1 Operation completed
+ @retval  0 Operation in process
+ @retval <0 Error condition
  */
 static int tftpProcessPacket(TFTP *pTftp) {
 	int rc = 0;
@@ -297,18 +293,18 @@ static int tftpProcessPacket(TFTP *pTftp) {
 	OpCode = (UINT16) ntohs(ReadBuffer->opcode);
 	switch (OpCode) {
 	case RRQ:
-		/* Verificamos el modo */
+		/* Check tftp mode */
 		rc = tftpGetMode((char *) ReadBuffer, pTftp->Length, &mode);
 		if (rc < 0)
 			break;
 
-		/* Este servidor solo soporta modo octec. */
+		/* This server only support octet mode (can add more modes) */
 		if (mode != TFTP_MODE_OCTET) {
 			rc = TFTPERROR_FAILED;
 			break;
 		}
 
-		/* Sacamos el nombre del archivo */
+		/* Extract the file name */
 		pTftp->szFileName = (char *) &ReadBuffer->block;
 		len = strlen(pTftp->szFileName) + 1;
 
@@ -319,7 +315,7 @@ static int tftpProcessPacket(TFTP *pTftp) {
 		}
 		bcopy((char *) &ReadBuffer->block, pTftp->szFileName, len );
 
-		/* Devolvemos el primer bloque de datos */
+		/* Respond first data block */
 		pTftp->NextBlock = 1;
 
 		/* Malloc App Data Buffer */
@@ -328,19 +324,19 @@ static int tftpProcessPacket(TFTP *pTftp) {
 			break;
 		}
 
-		/* Le preguntamos a la aplicación si procede con el paquete */
+		/* Send request to the application */
 		error = g_pfnRequest(pTftp->szFileName, pTftp->Buffer,
 				&pTftp->BufferSize, pTftp->NextBlock);
 
 		if (error != TFTP_ERR_NONE) {
-			/* Enviamos el error sin importar si llega o no */
+			/* Send error packet */
 			tftpErrorBuild(pTftp, error);
 			tftpSend(pTftp);
 			rc = TFTPERROR_FAILED;
 			break;
 		}
 
-		/* Cambiamos el puerto por donde escucha el servidor al mismo del cliente https://tools.ietf.org/html/rfc1350 */
+		/* Change the server listening local port */
 		rc = tftpChangeListenPort(pTftp);
 		if (rc < 0)
 			break;
@@ -350,7 +346,7 @@ static int tftpProcessPacket(TFTP *pTftp) {
 			break;
 		}
 
-		/* Construimos la respuesta */
+		/* Build the packet */
 		tftpDataBuild(pTftp);
 		rc = tftpSend(pTftp);
 		if (rc < 0)
@@ -377,19 +373,19 @@ static int tftpProcessPacket(TFTP *pTftp) {
 		/* reset Sync Counter */
 		pTftp->MaxSyncError = MAX_SYNC_TRIES;
 
-		/* Verificamos si el último paquete envíado era efectivamente el último */
+		/* This is the last data block? */
 		if (pTftp->BufferSize < SEGSIZE) {
-			// Se ha enviado todos los archivos y se recibió el último ack
+			// All blocks were sent
 			rc = 1;
 			break;
 		}
 
-		/* Le preguntamos a la aplicación si procede con el paquete */
+		/* Send request to the application */
 		error = g_pfnRequest(pTftp->szFileName, pTftp->Buffer,
 				&pTftp->BufferSize, pTftp->NextBlock);
 
 		if (error != TFTP_ERR_NONE) {
-			/* Enviamos el error sin importar si llega o no */
+			/* Send error packet */
 			tftpErrorBuild(pTftp, error);
 			tftpSend(pTftp);
 			rc = TFTPERROR_FAILED;
@@ -401,7 +397,7 @@ static int tftpProcessPacket(TFTP *pTftp) {
 			break;
 		}
 
-		/* Construimos la respuesta */
+		/* Build the packet */
 		tftpDataBuild(pTftp);
 		rc = tftpSend(pTftp);
 		if (rc < 0)
@@ -425,7 +421,8 @@ LEAVE:
 }
 
 /**
- @brief Devuelve el modo de transferencia que solicita el cliente
+ @brief Parses the request string to determine the transfer mode, 
+ netascii, octet for this request.
  */
 static int tftpGetMode(char *pui8Request, UINT32 ui32Len, tTFTPMode *mode) {
 	UINT32 ui32Loop;
@@ -470,7 +467,7 @@ static int tftpGetMode(char *pui8Request, UINT32 ui32Len, tTFTPMode *mode) {
 
 
 /**
- @brief Construye el paquete de error
+ @brief Build TFTP error packet.
  */
 static void tftpErrorBuild(TFTP *pTftp, tTFTPError eError)
 {
@@ -478,16 +475,16 @@ static void tftpErrorBuild(TFTP *pTftp, tTFTPError eError)
 
 	ERROR_Packet = (struct tftphdr *) pTftp->PacketBuffer;
 
-	/* A Data packet consists of an opcode (DATA) followed */
-	/* by a Block Number and the Data */
+	/* A Error packet consists of an opcode (ERROR) followed */
+	/* by a Error code and the message */
 
-	/* Opcode = DATA */
+	/* Opcode = ERROR */
 	ERROR_Packet->opcode = htons(ERROR);
 
-	/* ErrorCode = Código de error */
+	/* ErrorCode = Error code */
 	ERROR_Packet->block = htons(eError);
 
-	/* ErrMsg = Ninguno */
+	/* ErrMsg = None */
 	ERROR_Packet->data[0] = 0;
 
 	/* Calculate length of packet */
@@ -495,13 +492,13 @@ static void tftpErrorBuild(TFTP *pTftp, tTFTPError eError)
 }
 
 /**
- @brief Construye el paquete de datos para enviar al cliente
+ @brief Build TFTP data packet.
  */
 static void tftpDataBuild(TFTP *pTftp) {
 	struct tftphdr *DATA_Packet;
 	char *pData;
 
-	/* Por salud, verificamos que los datos no superen el tamaño del paquete */
+	/* Check arguments */
 	if (pTftp->BufferSize > SEGSIZE) {
 		return;
 	}
@@ -531,7 +528,7 @@ static void tftpDataBuild(TFTP *pTftp) {
 }
 
 /**
- @brief Envía un paquete pre-formado al cliente
+ @brief Send a TFTP packet.
  */
 static int tftpSend(TFTP *pTftp) {
 	int rc = 0;
@@ -547,7 +544,7 @@ static int tftpSend(TFTP *pTftp) {
 }
 
 /**
- @brief Intenta resincronizar un paquete perdido
+ @brief Synchronizes a lost packet
  */
 static int tftpReSync(TFTP *pTftp) {
 	int rc = 0;
@@ -569,8 +566,8 @@ static int tftpReSync(TFTP *pTftp) {
 	/* Resend last packet - if we're on block ZERO, resend the initial */
 	/* request. */
 
-	/* Construimos de nuevo la respuesta */
-	tftpDataBuild(pTftp);	// FALTA POR CONSTRUIRLO!!!!!!!!!
+	/* Build the packet */
+	tftpDataBuild(pTftp);
 
 	/* Send the packet */
 	rc = tftpSend(pTftp);
@@ -598,11 +595,11 @@ static void tftpFlushPackets(TFTP *pTftp) {
 }
 
 /**
- @brief Guarda el puntero a la función callback para las notificaciones GET
+ @brief Save a pointer to the callback function to notify TFTP server
+ events
  */
 void tftpInit(tTFTPRequest pfnRequest) {
 	if (pfnRequest == NULL)
 		return;
-	/* Recordamos la función callback de la aplicación */
 	g_pfnRequest = pfnRequest;
 }
