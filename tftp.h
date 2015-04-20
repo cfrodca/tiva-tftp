@@ -27,7 +27,7 @@ typedef enum
 
 #define SEGSIZE   		512     /* data segment size */
 
-#define PORT_TFTP 		69		  /* puerto tftp */
+#define PORT_TFTP 		69	 /* tftp port */
 
 int dtask_tftp( SOCKET s, UINT32 unused );
 typedef tTFTPError (*tTFTPRequest)(char *fileName, char *buffer, UINT32 *bufferSize, UINT16 block);
