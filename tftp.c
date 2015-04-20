@@ -158,10 +158,9 @@ int dtask_tftp(SOCKET s, UINT32 unused) {
  */
 static int tftpSocketRestart(TFTP *pTftp) {
 	int rc; /* Return Code */
-	/* Restauramos el puerto y seguimos escuchando por él */
+	
 	pTftp->localaddr.sin_port = htons(PORT_TFTP);
 
-	/* Asignamos un nombre local al socket */
 	if (bind(pTftp->Sock, (struct sockaddr *) &pTftp->localaddr,
 			sizeof(pTftp->localaddr)) < 0) {
 		rc = TFTPERROR_SOCKET;
