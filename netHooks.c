@@ -20,7 +20,4 @@ void netOpenHook()
 void netCloseHook()
 {
     DaemonFree(hTftp);
-
-    // Kill any active console
-    ConsoleDbgClose();
 }
