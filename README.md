@@ -9,17 +9,17 @@ Based on:
 Initialization:
 
 - Call the function void tftpInit(tTFTPRequest pfnRequest) and pass the callback application:
-
+´´´
 	int (*tTFTPError)(char *fileName, char **buffer, UINT32 *bufferSize, UINT16 block);
-
+´´´
 	Where:
-
+´´´
 	- char *buffer: file data provided by the application
 	- UINT32 *bufferSize: size of the data
 	- UINT16 block: segment of 512 Bytes of the file to transmit
-
+´´´
 - The server daemon must be created and destroyed from a file netHooks.c:
-
+´´´
 	static HANDLE hTftp = 0;
 
 	void netOpenHook()
@@ -32,3 +32,4 @@ Initialization:
 	{
     		DaemonFree(hTftp);
 	}
+´´´
