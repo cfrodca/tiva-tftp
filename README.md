@@ -1,12 +1,12 @@
 # tiva-tftp
 TFTP server for TI-RTOS v2
 
-Based on:
+### Based on:
 
 - lwIP TFTP server from revision 2.1.0.12573 of the Tiva Utility Library.
 - TFTP client from TI Network Developer's Kit (NDK) v2.24
 
-Initialization:
+### Use
 
 - Call the function void tftpInit(tTFTPRequest pfnRequest) and pass the callback application:
 ```sh
