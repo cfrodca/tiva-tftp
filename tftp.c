@@ -85,14 +85,14 @@ int dtask_tftp(SOCKET s, UINT32 unused) {
 
 	/* Malloc Parameter Structure */
 	if (!(pTftp = mmAlloc(sizeof(TFTP))))
-		goto ABORT;
+		goto FINALLY;
 
 	/* Initialize parameters to "NULL" */
 	bzero(pTftp, sizeof(TFTP));
 
 	/* Malloc Packet Data Buffer */
 	if (!(pTftp->PacketBuffer = mmAlloc(DATA_SIZE))) {
-		goto ABORT;
+		goto LEAVE;
 	}
 
 	/* Initialize address and local port */
@@ -143,12 +143,16 @@ int dtask_tftp(SOCKET s, UINT32 unused) {
 	rc = 1;
 	goto LEAVE;
 
-	ABORT: rc = 0;
+ABORT: 
+	rc = 0;
 	if (pTftp->Sock != INVALID_SOCKET)
 		fdClose(pTftp->Sock);
-	LEAVE: if (pTftp->PacketBuffer)
+LEAVE: 
+	if (pTftp->PacketBuffer)
 		mmFree(pTftp->PacketBuffer);
-	mmFree(pTftp);
+FINALLY:
+	if (pTftp)
+		mmFree(pTftp);
 
 	return (rc);
 }
